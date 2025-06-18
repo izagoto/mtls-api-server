@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: 🚀 CI/CD: Build & Deploy mTLS API
 
 on:
   push:
@@ -6,43 +6,47 @@ on:
       - main
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🛒 Checkout repository
+      - name: 🧾 Checkout Repository
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: 🐳 Login to DockerHub
+      - name: 🔐 Login to DockerHub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: 📦 Build and push Docker image
+      - name: 🏗️ Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/mtls-api:latest
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: 🔐 Setup SSH
-        uses: appleboy/ssh-action@master
+
+      - name: 🚀 Deploy to VPS
+        if: success()
+        uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.SERVER_IP }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_KEY }}
+          port: 22
           script: |
-            docker pull eaglestory/mtls-api:latest
-            docker stop mtls-api || true
-            docker rm mtls-api || true
-            docker run -d --name mtls-api -p 443:443 eaglestory/mtls-api:latest
+            echo ">> Pulling latest changes..."
+            cd ~/mtls-api
+            git pull origin main
+
+            echo ">> Restarting containers..."
+            docker-compose down
+            docker-compose up --build -d
+
+            echo ">> Done deploying!"
