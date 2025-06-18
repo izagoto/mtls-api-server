@@ -106,3 +106,4 @@ Contoh log:
 
 This project is licensed under the [MIT License](./LICENSE) — feel free to use and learn from it!
 
+..
